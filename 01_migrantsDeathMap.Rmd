@@ -63,62 +63,51 @@ data <- cbind(data, latlon)
 mb_tiles <- 'http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png' # no label base
 mb_tiles <- 'http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
 mb_attribution <- '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-map.height <- 800
+source <- paste0("source: ", htmlLink('http://www.themigrantsfiles.com', "The Migrant Files"), " | ", htmlLink('http://www.swissinfo.ch', "swissinfo.ch"))
+
+map.height <- 700
 date.from <- as.Date("2011-01-01")
-fontSize <- "0.9em"
+#fontSize <- "0.9em"
 
-dd <- filter(data, date >= date.from)
-
-# #dd$CartoDB_Cause_of_death <- as.factor(dd$CartoDB_Cause_of_death)
-# #factpal <- colorFactor(swi_rpal[1:length(unique( dd$CartoDB_Cause_of_death))], dd$CartoDB_Cause_of_death)
-# colors <- structure(swi_rpal[1:length(unique(dd$CartoDB_Cause_of_death))], names = unique(dd$CartoDB_Cause_of_death))
-# palF <- colorFactor(colors, dd$CartoDB_Cause_of_death)
+dd <- filter(data, date >= date.from, cause_of_death == "drowned")
+# hack to remove an event looking weird
+dd <- filter(dd, !Event_id %in% c(34025, 33990, 33864, 33842))
 
 
-lang <- 'EN'
-  
-if(lang == 'AR') {
-  #topP <- paste0('<div align=\"right\"><p dir=\"rtl\" style=\"font-size:', fontSize, '\"><strong>', dd$geo, "</strong><br>" )
-} else {
-  topP <- paste0('<p style=\"font-size:', fontSize, '\"><strong>Dead and missing: ', dd$dead_and_missing, "</strong><br>")
-}
 
-if(lang == 'AR') {
-  #popup <- paste0(topP, dd$sum, " ",  txt["layer.abs", lang], "</p>", ifelse(lang == 'ar', "</div>", ""))
-} else {
-  popup <- paste0(topP, 
-    "date: ", as.character(dd$date), "<br>",
-    ifelse(dd$location == "", "", paste0('<br>location: ', dd$location, '<br>')),
-    "cause: ", dd$CartoDB_Cause_of_death, "<br><br><i>",    
-    dd$description, "</i>", 
-    ifelse(dd$source_url == "", "", paste0('<br><br>source: ', htmlLink(dd$source_url, dd$source))),
-    "</p>", ifelse(lang == 'ar', "</div>", ""))   
-} 
-
+popup <- paste0('<table class="tabletooltip" cellpadding="1">',
+    '<tr><td><strong>', 'Dead and missing: ', dd$dead_and_missing,'</strong></td><td>', as.character(dd$date), '</td></tr>',
+    ifelse(dd$location == "", "", paste0('<tr><td colspan="2"><div style="font-size:0.8em">', dd$location, '</div></td></tr>')),
+    '<tr><td colspan="2"></td></tr>',
+    '<tr><td colspan="2"></td></tr>',
+    '<tr><td colspan="2"><i>',  dd$description, "</i></td></tr>", 
+    ifelse(dd$source_url == "", "", paste0('<tr><td colspan="2"></td></tr><tr><td colspan="2">source: ', htmlLink(dd$source_url, dd$source), '</td></tr>')),
+    '</table>'
+)
 
 map <- leaflet(height = map.height) %>% 
   addTiles(urlTemplate = mb_tiles, attribution = mb_attribution) %>%
   addCircleMarkers(data = filter(dd, dead_and_missing  == 1),
-    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.5, 
+    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.45, 
     fillColor = "#ab3d3f", # ~ palF(CartoDB_Cause_of_death), 
-    radius = ~ log( sqrt( dead_and_missing + 1)) * 8, popup = popup[which(dd$dead_and_missing == 1)]) %>% 
+    radius = ~ log( sqrt( dead_and_missing + 1)) * 5, popup = popup[which(dd$dead_and_missing == 1)]) %>% 
   addCircleMarkers(data = filter(dd, dead_and_missing  > 1), 
-    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.5, 
+    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.45, 
     fillColor = "#ab3d3f",
-    radius = ~ log( sqrt( dead_and_missing + 1)) * 8, popup = popup[which(dd$dead_and_missing > 1)]) %>% 
-  setView(16.7, 42, zoom = 5) 
+    radius = ~ log( sqrt( dead_and_missing + 1)) * 5, popup = popup[which(dd$dead_and_missing > 1)]) %>% 
+  setView(16.7, 37, zoom = 5) 
 
       
 save_html(
   tags$html(
     tags$head(includeHTML("styles.html")),
     tags$body(    
-      #h2(txt["main.title",lang]),
-      # div(class = "descr", HTML(txt["descr",lang])),
+      #h2("asdfsadf"),
+      div(class = "descr", HTML("Drowned migrants since 2011 in an attempt to come to or stay in Europe. At least 13,000 dead or missing migrants between 2011 and June 2016")),
       div(class="graphic", map),
-     # div(id = "cite", HTML(cite)),
+      div(id = "cite", HTML(source)),
       HTML('<script type="text/javascript" src="https://www.swissinfo.ch/static/Themes/basic/js/vendor/iframeResizer.contentWindow.3.5.3.min.js"></script>')  
-    )), file = "missingMigrants.html", libdir = "js", background = "#232325")     
+    )), file = "migrants_drownedsince2011_map.html", libdir = "js", background = "#232325")     
 
 original <- list.files("js", "leaflet.css", full.names = T, recursive = T)
 
