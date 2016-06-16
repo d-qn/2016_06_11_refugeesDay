@@ -1,0 +1,130 @@
+---
+title: "Migrant death map"
+author: "Duc-Quang Nguyen"
+date: "15 June 2016"
+output: html_document
+---
+
+
+## Data
+
+* columns *CartoDB_Cause_of_death* has 7 different type of death/disappearance
+* 
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(leaflet)
+library(countrycode)
+library(htmlwidgets)
+library(htmltools)
+library(swiMap)
+library(swiRcharts)
+
+
+translation.file <- ""
+data.file <- "data/"
+```
+
+```{r load data}
+data.read <- read.csv("data/Events during which someone died trying to reach or stay in Europe - Events.csv", stringsAsFactors = F, check.names = F)
+
+#remove NA ID lines
+#data.read <- data.read[!is.na(data.read[,1]),]
+
+# format date
+data.read$date <- as.Date(data.read$date)
+
+# drop columns
+data <- data.read %>% select(-quarter, -`Date-month`, -`Intent of going to Eur: 1(yes) 0(not confirmed)`, -`Somme Dedoublement`, -`name`)
+
+# recreate lon & lat columns (they lon lat have different formatting)
+latlon <- data %>% select(`latitude, longitude`) %>% unlist(use.names = F)
+latlon <- do.call(rbind, sapply(strsplit(latlon, ", "), function(i) {
+  if(length(i) == 0) {
+    c(NA, NA)
+  } else {
+    i
+  }
+}))
+colnames(latlon) <- c("lat", "lon")
+data <- cbind(data, latlon)
+
+```
+
+
+
+
+
+
+```{r map}
+# map setting
+mb_tiles <- 'http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png' # no label base
+mb_tiles <- 'http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+mb_attribution <- '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+map.height <- 800
+date.from <- as.Date("2011-01-01")
+fontSize <- "0.9em"
+
+dd <- filter(data, date >= date.from)
+
+# #dd$CartoDB_Cause_of_death <- as.factor(dd$CartoDB_Cause_of_death)
+# #factpal <- colorFactor(swi_rpal[1:length(unique( dd$CartoDB_Cause_of_death))], dd$CartoDB_Cause_of_death)
+# colors <- structure(swi_rpal[1:length(unique(dd$CartoDB_Cause_of_death))], names = unique(dd$CartoDB_Cause_of_death))
+# palF <- colorFactor(colors, dd$CartoDB_Cause_of_death)
+
+
+lang <- 'EN'
+  
+if(lang == 'AR') {
+  #topP <- paste0('<div align=\"right\"><p dir=\"rtl\" style=\"font-size:', fontSize, '\"><strong>', dd$geo, "</strong><br>" )
+} else {
+  topP <- paste0('<p style=\"font-size:', fontSize, '\"><strong>Dead and missing: ', dd$dead_and_missing, "</strong><br>")
+}
+
+if(lang == 'AR') {
+  #popup <- paste0(topP, dd$sum, " ",  txt["layer.abs", lang], "</p>", ifelse(lang == 'ar', "</div>", ""))
+} else {
+  popup <- paste0(topP, 
+    "date: ", as.character(dd$date), "<br>",
+    ifelse(dd$location == "", "", paste0('<br>location: ', dd$location, '<br>')),
+    "cause: ", dd$CartoDB_Cause_of_death, "<br><br><i>",    
+    dd$description, "</i>", 
+    ifelse(dd$source_url == "", "", paste0('<br><br>source: ', htmlLink(dd$source_url, dd$source))),
+    "</p>", ifelse(lang == 'ar', "</div>", ""))   
+} 
+
+
+map <- leaflet(height = map.height) %>% 
+  addTiles(urlTemplate = mb_tiles, attribution = mb_attribution) %>%
+  addCircleMarkers(data = filter(dd, dead_and_missing  == 1),
+    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.5, 
+    fillColor = "#ab3d3f", # ~ palF(CartoDB_Cause_of_death), 
+    radius = ~ log( sqrt( dead_and_missing + 1)) * 8, popup = popup[which(dd$dead_and_missing == 1)]) %>% 
+  addCircleMarkers(data = filter(dd, dead_and_missing  > 1), 
+    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.5, 
+    fillColor = "#ab3d3f",
+    radius = ~ log( sqrt( dead_and_missing + 1)) * 8, popup = popup[which(dd$dead_and_missing > 1)]) %>% 
+  setView(16.7, 42, zoom = 5) 
+
+      
+save_html(
+  tags$html(
+    tags$head(includeHTML("styles.html")),
+    tags$body(    
+      #h2(txt["main.title",lang]),
+      # div(class = "descr", HTML(txt["descr",lang])),
+      div(class="graphic", map),
+     # div(id = "cite", HTML(cite)),
+      HTML('<script type="text/javascript" src="https://www.swissinfo.ch/static/Themes/basic/js/vendor/iframeResizer.contentWindow.3.5.3.min.js"></script>')  
+    )), file = "missingMigrants.html", libdir = "js", background = "#232325")     
+
+original <- list.files("js", "leaflet.css", full.names = T, recursive = T)
+
+file.copy(list.files(system.file("extdata", package="swiRcharts"), 'leaflet.css', full.names = T), original, overwrite = T)      
+      
+  
+  
+
+```
