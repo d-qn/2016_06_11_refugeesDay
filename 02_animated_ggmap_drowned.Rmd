@@ -1,0 +1,143 @@
+---
+title: "02_animated_ggmap_drowned"
+author: "Duc-Quang Nguyen"
+date: "16 June 2016"
+output: html_document
+---
+
+## Data
+
+* columns *CartoDB_Cause_of_death* has 7 different type of death/disappearance
+* 
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(countrycode)
+library(swiMap)
+require(rgdal)
+library(rgeos)
+library(maptools)
+require(ggplot2)
+library(swiTheme)
+library(gganimate)
+library(tweenr)
+
+translation.file <- ""
+data.file <- "data/"
+```
+
+```{r load data}
+data.read <- read.csv("data/Events during which someone died trying to reach or stay in Europe - Events.csv", stringsAsFactors = F, check.names = F)
+
+# format date
+data.read$date <- as.Date(data.read$date)
+
+# drop columns
+data <- data.read %>% select(-quarter, -`Intent of going to Eur: 1(yes) 0(not confirmed)`, -`Somme Dedoublement`, -`name`)
+
+# recreate lon & lat columns (they lon lat have different formatting)
+latlon <- data %>% select(`latitude, longitude`) %>% unlist(use.names = F)
+latlon <- do.call(rbind, sapply(strsplit(latlon, ", "), function(i) {
+  if(length(i) == 0) {
+    c(NA, NA)
+  } else {
+    as.numeric(i)
+  }
+}))
+colnames(latlon) <- c("lat", "lon")
+data <- cbind(data, latlon)
+
+```
+
+```{r prepare data for cartodb, echo = F}
+# date.from <- as.Date("2015-06-20")
+# cdb <- filter(data, date >= date.from, cause_of_death == "drowned")
+# # ugly hack to remove  events looking weird not in the sea at all!
+# cdb <- filter(cdb, !Event_id %in% c(34025, 33990, 33864, 33842, 33908), !is.na(lon))
+# 
+# cdb %<>% select(-dataset, -CartoDB_Cause_of_death, -cause_of_death, -Event_id,
+#   -description, -location, -latitude, -longitude, -source, -source_url, -`route (Frontex)`)
+# 
+# write.csv(cdb, file = "input/lastYear_drownedMigrants4CDB.csv", row.names = F)
+
+```
+
+```{r map}
+map.height <- 600
+date.from <- as.Date("2015-06-20")
+#fontSize <- "0.9em"
+
+dd <- filter(data, date >= date.from, cause_of_death == "drowned")
+# ugly hack to remove  events looking weird not in the sea at all!
+dd <- filter(dd, !Event_id %in% c(34025, 33990, 33864, 33842, 33908))
+dates <- seq(date.from, max(dd$date), 1)
+
+# drop columns
+dd %<>% select(-cause_of_death, -CartoDB_Cause_of_death, -description, -source, -source_url, -latitude, -longitude)
+
+## Map
+
+world <- map_data("world")
+# filter
+reg2cont <- unique(world$region)
+names(reg2cont) <- countrycode(reg2cont, "country.name", "continent")
+world$continent <- names(reg2cont)[match(world$region, reg2cont)]
+world <- world[world$region != "Antarctica",]
+world <- world %>% 
+  filter(region !=  "Antarctica", !continent %in% c('Americas', 'Oceania'))
+
+
+wm <- ggplot() + 
+  geom_polygon(data = world, aes(x = long, y = lat, group = group), 
+    size = 0.1, fill = "#d4c3aa", colour = "#aa8959") + 
+  swi_theme(y_gridlines = F, base_size = 14) + 
+  theme(
+    panel.background = element_rect(fill = '#f7f5ed'),
+    axis.ticks = element_blank(), 
+    axis.title = element_blank(), 
+    axis.text = element_blank(),
+    legend.position = "none",
+    plot.margin=unit(rep(0, 4), "cm")
+  )
+#wm 
+ # With nice orthographic projection
+wm <- wm + coord_map("orthographic",  orientation = c(30, 12, 0), xlim = c(-11, 43), ylim = c(20, 60))
+
+
+
+# http://stackoverflow.com/questions/9441778/improve-centering-county-names-ggplot-maps
+# centroids <- setNames(do.call("rbind.data.frame", by(world, world$group, function(x) {Polygon(x[c('long', 'lat')])@labpt})), c('long', 'lat')) 
+# centroids$label <- world[match(unique(world$group), world$group), 'region']
+# #ctoids <- centroids[!duplicated(centroids$label),]
+# ctoids <- centroids %>% 
+#   subset(label %in% c("Tunisia", "Morocco", "Libya", "Egypt", "Palestine", "Lebanon", 
+#                     "Turkey", "Greece", "Italy", "France", "Spain", "Switzerland"))
+# wm + geom_text(data=ctoids, aes(label=label, x=long, y=lat), color = "white", size=2)
+dd <- arrange(dd, date)
+dd$cumDM <- cumsum(dd$dead_and_missing)
+
+dates <- seq(min(dd$date), max(dd$date), by = "week")
+
+dd$startWDate <- dates[findInterval(dd$date, dates)]
+
+txt <- dd %>% group_by(startWDate) %>% summarise(dm = sum(dead_and_missing)) %>% ungroup()
+txt$cumsumDM <- cumsum(txt$dm)
+txt$x <- 34
+txt$y <- 60
+counter <- txt
+counter$label <- paste0("dead or missing\n", counter$cumsumDM)
+
+p <- wm + geom_point(
+  data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
+  color = "#ab3d3f", alpha = 0.7
+  ) + scale_size(range = c(1, 20)) +
+  geom_text(data = counter, aes(x = x, y = y, label = label, frame = startWDate), 
+    size = 7, color = "#ab3d3f", family = "Open Sans", fontface = "bold", hjust = 0) +
+  labs(
+    subtitle="Migrants who have drowned over the last year", 
+       caption="source: The Migrants' Files | swissinfo.ch"
+  )
+
+gg_animate(p, "test_output.gif", interval = 0.7, ani.width = 700, ani.height = 700)

@@ -45,38 +45,38 @@ latlon <- do.call(rbind, sapply(strsplit(latlon, ", "), function(i) {
   if(length(i) == 0) {
     c(NA, NA)
   } else {
-    i
+    as.numeric(i)
   }
 }))
 colnames(latlon) <- c("lat", "lon")
 data <- cbind(data, latlon)
+#data$lat <- as.numeric(data$lat)
 
 ```
-
-
-
-
 
 
 ```{r map}
 # map setting
 mb_tiles <- 'http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png' # no label base
 mb_tiles <- 'http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-mb_attribution <- '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-source <- paste0("source: ", htmlLink('http://www.themigrantsfiles.com', "The Migrant Files"), " | ", htmlLink('http://www.swissinfo.ch', "swissinfo.ch"))
 
-map.height <- 700
+mb_attribution <- '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+source <- paste0("source: ", htmlLink('http://www.themigrantsfiles.com', "The Migrants' Files"), " | ", htmlLink('http://www.swissinfo.ch', "swissinfo.ch"))
+
+map.height <- 500
 date.from <- as.Date("2011-01-01")
 #fontSize <- "0.9em"
 
-dd <- filter(data, date >= date.from, cause_of_death == "drowned")
-# hack to remove an event looking weird
-dd <- filter(dd, !Event_id %in% c(34025, 33990, 33864, 33842))
+dd <- filter(data, date >= date.from, cause_of_death == "drowned", !is.na(lon))
+# ugly hack to remove  events looking weird not in the sea at all!
+dd <- filter(dd, !Event_id %in% c(34025, 33990, 33864, 33842, 33908))
 
+# ugly hack to remove far south events
+#dd <- filter(dd, !Event_id %in% c(72722, 33867))
 
 
 popup <- paste0('<table class="tabletooltip" cellpadding="1">',
-    '<tr><td><strong>', 'Dead and missing: ', dd$dead_and_missing,'</strong></td><td>', as.character(dd$date), '</td></tr>',
+    '<tr><td><strong>', 'DEAD AND MISSING: ', dd$dead_and_missing,'</strong></td><td>', as.character(dd$date), '</td></tr>',
     ifelse(dd$location == "", "", paste0('<tr><td colspan="2"><div style="font-size:0.8em">', dd$location, '</div></td></tr>')),
     '<tr><td colspan="2"></td></tr>',
     '<tr><td colspan="2"></td></tr>',
@@ -85,28 +85,57 @@ popup <- paste0('<table class="tabletooltip" cellpadding="1">',
     '</table>'
 )
 
-map <- leaflet(height = map.height) %>% 
-  addTiles(urlTemplate = mb_tiles, attribution = mb_attribution) %>%
-  addCircleMarkers(data = filter(dd, dead_and_missing  == 1),
-    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.45, 
-    fillColor = "#ab3d3f", # ~ palF(CartoDB_Cause_of_death), 
-    radius = ~ log( sqrt( dead_and_missing + 1)) * 5, popup = popup[which(dd$dead_and_missing == 1)]) %>% 
-  addCircleMarkers(data = filter(dd, dead_and_missing  > 1), 
-    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.45, 
-    fillColor = "#ab3d3f",
-    radius = ~ log( sqrt( dead_and_missing + 1)) * 5, popup = popup[which(dd$dead_and_missing > 1)]) %>% 
-  setView(16.7, 37, zoom = 5) 
+fsize <- 10^4 * 2
+## with cirles! ##
+# map <- leaflet(height = map.height) %>% 
+#   addTiles(urlTemplate = mb_tiles, attribution = mb_attribution) %>%
+#   addCircles(data = filter(dd, dead_and_missing  == 1),
+#     lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.5,
+#     fillColor = "#ab3d3f",
+#     radius = ~ log( sqrt( dead_and_missing + 1)) * fsize, popup = popup[which(dd$dead_and_missing == 1)]) %>%
+#   addCircles(data = filter(dd, dead_and_missing  > 1),
+#     lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.5,
+#     fillColor = "#ab3d3f",
+#     radius = ~ log( sqrt( dead_and_missing + 1)) * fsize, popup = popup[which(dd$dead_and_missing > 1)]) %>%
+#   setView(16.7, 37, zoom = 5) 
 
-      
+
+
+# old PROD
+# fsize <- 4
+# map <- leaflet(height = map.height) %>%
+#   addTiles(urlTemplate = mb_tiles, attribution = mb_attribution) %>%
+#   addCircleMarkers(data = filter(dd, dead_and_missing  == 1),
+#     lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.4,
+#     fillColor = "#ab3d3f",
+#     radius = ~ log( sqrt( dead_and_missing + 1)) * fsize, popup = popup[which(dd$dead_and_missing == 1)]) %>%
+#   addCircleMarkers(data = filter(dd, dead_and_missing  > 1),
+#     lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.4,
+#     fillColor = "#ab3d3f",
+#     radius = ~ log( sqrt( dead_and_missing + 1)) * fsize, popup = popup[which(dd$dead_and_missing > 1)]) %>%
+#   setView(16.7, 37, zoom = 4)
+
+# 
+fsize <- 3.5
+map <- leaflet(data = dd, height = map.height) %>%
+  addTiles(urlTemplate = mb_tiles, attribution = mb_attribution) %>%
+  addCircleMarkers(
+    lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.37,
+    fillColor = "#ab3d3f",
+    radius = ~ log( sqrt( dead_and_missing + 1)) * fsize, popup = popup) %>%
+  setView(16.7, 37, zoom = 4)
+
+saveWidget(map, "testsave.html")
+
 save_html(
   tags$html(
     tags$head(includeHTML("styles.html")),
     tags$body(    
-      #h2("asdfsadf"),
-      div(class = "descr", HTML("Drowned migrants since 2011 in an attempt to come to or stay in Europe. At least 13,000 dead or missing migrants between 2011 and June 2016")),
+     # h2("asdfsadf"),
+      div(class = "descr", HTML("Migrants who have drowned while attempting to enter or stay in Europe since 2011. At least 13,000 migrants died or went missing between 2011 and June 2016")),
       div(class="graphic", map),
       div(id = "cite", HTML(source)),
-      HTML('<script type="text/javascript" src="https://www.swissinfo.ch/static/Themes/basic/js/vendor/iframeResizer.contentWindow.3.5.3.min.js"></script>')  
+      HTML('<script type="text/javascript" src="https://www.swissinfo.ch/static/Themes/basic/js/vendor/iframeResizer.contentWindow.3.5.3.min.js"></script>')
     )), file = "migrants_drownedsince2011_map.html", libdir = "js", background = "#232325")     
 
 original <- list.files("js", "leaflet.css", full.names = T, recursive = T)
