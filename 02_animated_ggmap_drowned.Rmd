@@ -22,10 +22,11 @@ library(maptools)
 require(ggplot2)
 library(swiTheme)
 library(gganimate)
-library(tweenr)
+library(extrafont)
 
-translation.file <- ""
-data.file <- "data/"
+translation.file <- "input/Death in the Mediterranean over the last year - Sheet1.csv"
+exludeLangs <- ("EN")
+
 ```
 
 ```{r load data}
@@ -49,6 +50,17 @@ latlon <- do.call(rbind, sapply(strsplit(latlon, ", "), function(i) {
 colnames(latlon) <- c("lat", "lon")
 data <- cbind(data, latlon)
 
+
+txt <- read.csv(translation.file, row.names = 1, stringsAsFactors = F)
+# discard incomplete translations
+cidx <- unique(which(txt =="" | is.na(txt), T)[,2])
+if(length(cidx > 0)) {
+  warning(paste(colnames(txt)[cidx], collapse = "\t"), " languages will be discarded!", "\n")
+  txt <- txt[,-cidx, drop = F]
+}
+colnames(txt)
+
+
 ```
 
 ```{r prepare data for cartodb, echo = F}
@@ -65,8 +77,11 @@ data <- cbind(data, latlon)
 ```
 
 ```{r map}
-map.height <- 600
 date.from <- as.Date("2015-06-20")
+txt.xpos <- 37
+txt.ypos <- 55
+
+
 #fontSize <- "0.9em"
 
 dd <- filter(data, date >= date.from, cause_of_death == "drowned")
@@ -91,53 +106,82 @@ world <- world %>%
 
 wm <- ggplot() + 
   geom_polygon(data = world, aes(x = long, y = lat, group = group), 
-    size = 0.1, fill = "#d4c3aa", colour = "#aa8959") + 
-  swi_theme(y_gridlines = F, base_size = 14) + 
+    size = 0.2, fill = "#d4c3aa", colour = "#aa8959") + 
+  swi_theme(y_gridlines = F, base_size = 16) + 
   theme(
-    panel.background = element_rect(fill = '#f7f5ed'),
+    panel.background = element_rect(fill = '#f7f5ed', size = 0),
+    panel.grid = element_blank(), 
     axis.ticks = element_blank(), 
     axis.title = element_blank(), 
     axis.text = element_blank(),
     legend.position = "none",
+    plot.title = element_text(family="Open Sans Condensed", size = 23, margin=margin(b=10), face = "bold"),
+    plot.caption=element_text(size=12, hjust=0, margin=margin(t=10)),
     plot.margin=unit(rep(0, 4), "cm")
   )
-#wm 
+
  # With nice orthographic projection
-wm <- wm + coord_map("orthographic",  orientation = c(30, 12, 0), xlim = c(-11, 43), ylim = c(20, 60))
-
-
-
-# http://stackoverflow.com/questions/9441778/improve-centering-county-names-ggplot-maps
-# centroids <- setNames(do.call("rbind.data.frame", by(world, world$group, function(x) {Polygon(x[c('long', 'lat')])@labpt})), c('long', 'lat')) 
-# centroids$label <- world[match(unique(world$group), world$group), 'region']
-# #ctoids <- centroids[!duplicated(centroids$label),]
-# ctoids <- centroids %>% 
-#   subset(label %in% c("Tunisia", "Morocco", "Libya", "Egypt", "Palestine", "Lebanon", 
-#                     "Turkey", "Greece", "Italy", "France", "Spain", "Switzerland"))
-# wm + geom_text(data=ctoids, aes(label=label, x=long, y=lat), color = "white", size=2)
+wm <- wm + coord_map("orthographic",  orientation = c(30, 12, 0), xlim = c(-11, 43), ylim = c(24, 60))
 dd <- arrange(dd, date)
+
 dd$cumDM <- cumsum(dd$dead_and_missing)
-
 dates <- seq(min(dd$date), max(dd$date), by = "week")
-
 dd$startWDate <- dates[findInterval(dd$date, dates)]
 
-txt <- dd %>% group_by(startWDate) %>% summarise(dm = sum(dead_and_missing)) %>% ungroup()
-txt$cumsumDM <- cumsum(txt$dm)
-txt$x <- 34
-txt$y <- 60
-counter <- txt
-counter$label <- paste0("dead or missing\n", counter$cumsumDM)
 
-p <- wm + geom_point(
-  data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
-  color = "#ab3d3f", alpha = 0.7
-  ) + scale_size(range = c(1, 20)) +
-  geom_text(data = counter, aes(x = x, y = y, label = label, frame = startWDate), 
-    size = 7, color = "#ab3d3f", family = "Open Sans", fontface = "bold", hjust = 0) +
-  labs(
-    subtitle="Migrants who have drowned over the last year", 
-       caption="source: The Migrants' Files | swissinfo.ch"
-  )
+counter <- dd %>% group_by(startWDate) %>% summarise(dm = sum(dead_and_missing)) %>% ungroup()
+counter$cumsumDM <- cumsum(counter$dm)
+counter$x <- txt.xpos
+counter$y <- txt.ypos
 
-gg_animate(p, "test_output.gif", interval = 0.7, ani.width = 700, ani.height = 700)
+# duplicate the last date
+counter <- counter[c(1:nrow(counter), rep(nrow(counter), 3)),]
+# hack to add a date£
+counter[nrow(counter),'startWDate'] <- counter[nrow(counter),'startWDate'] + 7
+#counter$label <- paste0("dead or missing\n", counter$cumsumDM)
+
+langs <- colnames(txt)[!colnames(txt) %in% exludeLangs]
+
+
+sapply(langs, function(lang) {
+  cat("\n", lang, "\n")
+  output <- paste0("migrants_deathAtSea_", lang, ".gif")
+  
+  p <- wm + geom_point(
+    data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
+    color = "#ab3d3f", alpha = 0.7
+  ) + 
+  scale_size(range = c(1, 22)) +
+    annotate(
+      "text", x = txt.xpos, y = txt.ypos, label = paste0( txt['dm', lang], "  "),
+      size = 14, color = "#ab3d3f", family = txt['txt.title', lang], hjust = 1, vjust = 0, alpha = 0.8) +
+    geom_text(
+      data = counter, aes(x = x, y = y, label = cumsumDM, frame = startWDate), 
+      size = 27, color = "#ab3d3f", family = txt['txt.number', lang], fontface = "bold", hjust = 0, vjust = 0, alpha = 0.9) +
+    labs(
+      title = paste0 (txt['main.title', lang],  "\n", txt['main.title2', lang], ":"), 
+      caption = txt['footer', lang]
+    ) + 
+    theme(
+        plot.title = element_text(family = txt['font.title', lang], size = 22, margin=margin(b=12), face = "bold")
+    )
+
+  gg_animate(p, output, interval = 0.65, ani.width = 700, ani.height = 640)
+})
+
+
+
+# p <- wm + geom_point(
+#   data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
+#   color = "#ab3d3f", alpha = 0.7
+#   ) + scale_size(range = c(1, 22)) +
+#   annotate("text", x = txt.xpos, y = txt.ypos, label = "dead or missing: ",
+#     size = 14, color = "#ab3d3f", family = "OpenSans-CondensedLight", hjust = 1, vjust = 0, alpha = 0.8) +
+#   geom_text(data = counter, aes(x = x, y = y, label = cumsumDM, frame = startWDate), 
+#     size = 27, color = "#ab3d3f", family = "Open Sans", fontface = "bold", hjust = 0, vjust = 0, alpha = 0.9) +
+#   labs(
+#     title = paste0 ("Migrants who have drowned over the last year", ": "), 
+#     caption = "source: The Migrants' Files | swissinfo.ch"
+#   ) +
+# 
+# gg_animate(p, "migrants_deathAtSea.gif", interval = 0.6, ani.width = 700, ani.height = 600)

@@ -94,9 +94,24 @@ latlon &lt;- do.call(rbind, sapply(strsplit(latlon, &quot;, &quot;), function(i)
 <pre><code>## Warning in FUN(X[[i]], ...): NAs introduced by coercion</code></pre>
 <pre><code>## Warning in FUN(X[[i]], ...): NAs introduced by coercion</code></pre>
 <pre class="r"><code>colnames(latlon) &lt;- c(&quot;lat&quot;, &quot;lon&quot;)
-data &lt;- cbind(data, latlon)</code></pre>
-<pre class="r"><code>map.height &lt;- 600
-date.from &lt;- as.Date(&quot;2015-06-20&quot;)
+data &lt;- cbind(data, latlon)
+
+
+txt &lt;- read.csv(translation.file, row.names = 1, stringsAsFactors = F)
+# discard incomplete translations
+cidx &lt;- unique(which(txt ==&quot;&quot; | is.na(txt), T)[,2])
+if(length(cidx &gt; 0)) {
+  warning(paste(colnames(txt)[cidx], collapse = &quot;\t&quot;), &quot; languages will be discarded!&quot;, &quot;\n&quot;)
+  txt &lt;- txt[,-cidx, drop = F]
+}</code></pre>
+<pre><code>## Warning: RU  ES  JA  ZH languages will be discarded!</code></pre>
+<pre class="r"><code>colnames(txt)</code></pre>
+<pre><code>## [1] &quot;EN&quot; &quot;FR&quot; &quot;DE&quot; &quot;IT&quot; &quot;PT&quot;</code></pre>
+<pre class="r"><code>date.from &lt;- as.Date(&quot;2015-06-20&quot;)
+txt.xpos &lt;- 37
+txt.ypos &lt;- 55
+
+
 #fontSize &lt;- &quot;0.9em&quot;
 
 dd &lt;- filter(data, date &gt;= date.from, cause_of_death == &quot;drowned&quot;)
@@ -126,61 +141,76 @@ world &lt;- world %&gt;%
 
 wm &lt;- ggplot() + 
   geom_polygon(data = world, aes(x = long, y = lat, group = group), 
-    size = 0.1, fill = &quot;#d4c3aa&quot;, colour = &quot;#aa8959&quot;) + 
-  swi_theme(y_gridlines = F, base_size = 14) + 
+    size = 0.2, fill = &quot;#d4c3aa&quot;, colour = &quot;#aa8959&quot;) + 
+  swi_theme(y_gridlines = F, base_size = 16) + 
   theme(
-    panel.background = element_rect(fill = '#f7f5ed'),
+    panel.background = element_rect(fill = '#f7f5ed', size = 0),
+    panel.grid = element_blank(), 
     axis.ticks = element_blank(), 
     axis.title = element_blank(), 
     axis.text = element_blank(),
     legend.position = &quot;none&quot;,
+    plot.title = element_text(family=&quot;Open Sans Condensed&quot;, size = 23, margin=margin(b=10), face = &quot;bold&quot;),
+    plot.caption=element_text(size=12, hjust=0, margin=margin(t=10)),
     plot.margin=unit(rep(0, 4), &quot;cm&quot;)
   )
-#wm 
+
  # With nice orthographic projection
-wm &lt;- wm + coord_map(&quot;orthographic&quot;,  orientation = c(30, 12, 0), xlim = c(-11, 43), ylim = c(20, 60))
-
-
-
-# http://stackoverflow.com/questions/9441778/improve-centering-county-names-ggplot-maps
-# centroids &lt;- setNames(do.call(&quot;rbind.data.frame&quot;, by(world, world$group, function(x) {Polygon(x[c('long', 'lat')])@labpt})), c('long', 'lat')) 
-# centroids$label &lt;- world[match(unique(world$group), world$group), 'region']
-# #ctoids &lt;- centroids[!duplicated(centroids$label),]
-# ctoids &lt;- centroids %&gt;% 
-#   subset(label %in% c(&quot;Tunisia&quot;, &quot;Morocco&quot;, &quot;Libya&quot;, &quot;Egypt&quot;, &quot;Palestine&quot;, &quot;Lebanon&quot;, 
-#                     &quot;Turkey&quot;, &quot;Greece&quot;, &quot;Italy&quot;, &quot;France&quot;, &quot;Spain&quot;, &quot;Switzerland&quot;))
-# wm + geom_text(data=ctoids, aes(label=label, x=long, y=lat), color = &quot;white&quot;, size=2)
+wm &lt;- wm + coord_map(&quot;orthographic&quot;,  orientation = c(30, 12, 0), xlim = c(-11, 43), ylim = c(24, 60))
 dd &lt;- arrange(dd, date)
+
 dd$cumDM &lt;- cumsum(dd$dead_and_missing)
-
 dates &lt;- seq(min(dd$date), max(dd$date), by = &quot;week&quot;)
-
 dd$startWDate &lt;- dates[findInterval(dd$date, dates)]
 
-txt &lt;- dd %&gt;% group_by(startWDate) %&gt;% summarise(dm = sum(dead_and_missing)) %&gt;% ungroup()
-txt$cumsumDM &lt;- cumsum(txt$dm)
-txt$x &lt;- 34
-txt$y &lt;- 60
-counter &lt;- txt
-counter$label &lt;- paste0(&quot;dead or missing\n&quot;, counter$cumsumDM)
 
-p &lt;- wm + geom_point(
-  data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
-  color = &quot;#ab3d3f&quot;, alpha = 0.7
-  ) + scale_size(range = c(1, 20)) +
-  geom_text(data = counter, aes(x = x, y = y, label = label, frame = startWDate), 
-    size = 7, color = &quot;#ab3d3f&quot;, family = &quot;Open Sans&quot;, fontface = &quot;bold&quot;, hjust = 0) +
-  labs(
-    subtitle=&quot;Migrants who have drowned over the last year&quot;, 
-       caption=&quot;source: The Migrants' Files | swissinfo.ch&quot;
-  )
+counter &lt;- dd %&gt;% group_by(startWDate) %&gt;% summarise(dm = sum(dead_and_missing)) %&gt;% ungroup()
+counter$cumsumDM &lt;- cumsum(counter$dm)
+counter$x &lt;- txt.xpos
+counter$y &lt;- txt.ypos
 
-gg_animate(p, &quot;test_output.gif&quot;, interval = 0.7, ani.width = 700, ani.height = 700)</code></pre>
+# duplicate the last date
+counter &lt;- counter[c(1:nrow(counter), rep(nrow(counter), 3)),]
+# hack to add a date£
+counter[nrow(counter),'startWDate'] &lt;- counter[nrow(counter),'startWDate'] + 7
+#counter$label &lt;- paste0(&quot;dead or missing\n&quot;, counter$cumsumDM)
+
+langs &lt;- colnames(txt)[!colnames(txt) %in% exludeLangs]
+
+
+sapply(langs, function(lang) {
+  cat(&quot;\n&quot;, lang, &quot;\n&quot;)
+  output &lt;- paste0(&quot;migrants_deathAtSea_&quot;, lang, &quot;.gif&quot;)
+  
+  p &lt;- wm + geom_point(
+    data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
+    color = &quot;#ab3d3f&quot;, alpha = 0.7
+  ) + 
+  scale_size(range = c(1, 22)) +
+    annotate(
+      &quot;text&quot;, x = txt.xpos, y = txt.ypos, label = paste0( txt['dm', lang], &quot;  &quot;),
+      size = 14, color = &quot;#ab3d3f&quot;, family = txt['txt.title', lang], hjust = 1, vjust = 0, alpha = 0.8) +
+    geom_text(
+      data = counter, aes(x = x, y = y, label = cumsumDM, frame = startWDate), 
+      size = 27, color = &quot;#ab3d3f&quot;, family = txt['txt.number', lang], fontface = &quot;bold&quot;, hjust = 0, vjust = 0, alpha = 0.9) +
+    labs(
+      title = paste0 (txt['main.title', lang],  &quot;\n&quot;, txt['main.title2', lang], &quot;:&quot;), 
+      caption = txt['footer', lang]
+    ) + 
+    theme(
+        plot.title = element_text(family = txt['font.title', lang], size = 22, margin=margin(b=12), face = &quot;bold&quot;)
+    )
+
+  gg_animate(p, output, interval = 0.65, ani.width = 700, ani.height = 620)
+})</code></pre>
+<pre><code>## 
+##  FR</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
 <pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
 <pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
 <pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
 <pre><code>## Executing: 
-## 'convert' -loop 0 -delay 70 Rplot1.png Rplot2.png Rplot3.png
+## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
 ##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
 ##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
 ##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
@@ -188,8 +218,77 @@ gg_animate(p, &quot;test_output.gif&quot;, interval = 0.7, ani.width = 700, ani.
 ##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
 ##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
 ##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
-##     'test_output.gif'
-## Output at: test_output.gif</code></pre>
+##     Rplot39.png 'migrants_deathAtSea_FR.gif'
+## Output at: migrants_deathAtSea_FR.gif</code></pre>
+<pre><code>## 
+##  DE</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Executing: 
+## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
+##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
+##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
+##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
+##     Rplot19.png Rplot20.png Rplot21.png Rplot22.png Rplot23.png
+##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
+##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
+##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
+##     Rplot39.png 'migrants_deathAtSea_DE.gif'
+## Output at: migrants_deathAtSea_DE.gif</code></pre>
+<pre><code>## 
+##  IT</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Executing: 
+## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
+##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
+##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
+##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
+##     Rplot19.png Rplot20.png Rplot21.png Rplot22.png Rplot23.png
+##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
+##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
+##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
+##     Rplot39.png 'migrants_deathAtSea_IT.gif'
+## Output at: migrants_deathAtSea_IT.gif</code></pre>
+<pre><code>## 
+##  PT</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Executing: 
+## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
+##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
+##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
+##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
+##     Rplot19.png Rplot20.png Rplot21.png Rplot22.png Rplot23.png
+##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
+##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
+##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
+##     Rplot39.png 'migrants_deathAtSea_PT.gif'
+## Output at: migrants_deathAtSea_PT.gif</code></pre>
+<pre><code>##        FR         DE         IT         PT        
+## plots  List,39    List,39    List,39    List,39   
+## frames Numeric,39 Numeric,39 Numeric,39 Numeric,39
+## saved  TRUE       TRUE       TRUE       TRUE</code></pre>
+<pre class="r"><code># p &lt;- wm + geom_point(
+#   data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
+#   color = &quot;#ab3d3f&quot;, alpha = 0.7
+#   ) + scale_size(range = c(1, 22)) +
+#   annotate(&quot;text&quot;, x = txt.xpos, y = txt.ypos, label = &quot;dead or missing: &quot;,
+#     size = 14, color = &quot;#ab3d3f&quot;, family = &quot;OpenSans-CondensedLight&quot;, hjust = 1, vjust = 0, alpha = 0.8) +
+#   geom_text(data = counter, aes(x = x, y = y, label = cumsumDM, frame = startWDate), 
+#     size = 27, color = &quot;#ab3d3f&quot;, family = &quot;Open Sans&quot;, fontface = &quot;bold&quot;, hjust = 0, vjust = 0, alpha = 0.9) +
+#   labs(
+#     title = paste0 (&quot;Migrants who have drowned over the last year&quot;, &quot;: &quot;), 
+#     caption = &quot;source: The Migrants' Files | swissinfo.ch&quot;
+#   ) +
+# 
+# gg_animate(p, &quot;migrants_deathAtSea.gif&quot;, interval = 0.6, ani.width = 700, ani.height = 600)</code></pre>
 </div>
 
 
