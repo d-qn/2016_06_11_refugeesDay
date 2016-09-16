@@ -25,7 +25,7 @@ library(gganimate)
 library(extrafont)
 
 translation.file <- "input/Death in the Mediterranean over the last year - Sheet1.csv"
-exludeLangs <- ("EN")
+exludeLangs <- c("EN", "DE", "IT", 'PT', "FR", "ES")
 
 ```
 
@@ -145,6 +145,9 @@ langs <- colnames(txt)[!colnames(txt) %in% exludeLangs]
 
 sapply(langs, function(lang) {
   cat("\n", lang, "\n")
+  if(lang == "JA") {
+    txt.xpos <- txt.xpos - 6 
+  }
   output <- paste0("migrants_deathAtSea_", lang, ".gif")
   
   p <- wm + geom_point(
@@ -165,7 +168,9 @@ sapply(langs, function(lang) {
     theme(
         plot.title = element_text(family = txt['font.title', lang], size = 22, margin=margin(b=12), face = "bold")
     )
-
+  if(lang == "JA") {
+    p <- p + theme(plot.caption=element_text(family =  txt['font.title', lang]))
+  }
   gg_animate(p, output, interval = 0.65, ani.width = 700, ani.height = 640)
 })
 

@@ -104,9 +104,9 @@ if(length(cidx &gt; 0)) {
   warning(paste(colnames(txt)[cidx], collapse = &quot;\t&quot;), &quot; languages will be discarded!&quot;, &quot;\n&quot;)
   txt &lt;- txt[,-cidx, drop = F]
 }</code></pre>
-<pre><code>## Warning: RU  ES  JA  ZH languages will be discarded!</code></pre>
+<pre><code>## Warning: RU  ZH languages will be discarded!</code></pre>
 <pre class="r"><code>colnames(txt)</code></pre>
-<pre><code>## [1] &quot;EN&quot; &quot;FR&quot; &quot;DE&quot; &quot;IT&quot; &quot;PT&quot;</code></pre>
+<pre><code>## [1] &quot;EN&quot; &quot;FR&quot; &quot;DE&quot; &quot;IT&quot; &quot;PT&quot; &quot;ES&quot; &quot;JA&quot;</code></pre>
 <pre class="r"><code>date.from &lt;- as.Date(&quot;2015-06-20&quot;)
 txt.xpos &lt;- 37
 txt.ypos &lt;- 55
@@ -180,6 +180,9 @@ langs &lt;- colnames(txt)[!colnames(txt) %in% exludeLangs]
 
 sapply(langs, function(lang) {
   cat(&quot;\n&quot;, lang, &quot;\n&quot;)
+  if(lang == &quot;JA&quot;) {
+    txt.xpos &lt;- txt.xpos - 6 
+  }
   output &lt;- paste0(&quot;migrants_deathAtSea_&quot;, lang, &quot;.gif&quot;)
   
   p &lt;- wm + geom_point(
@@ -200,11 +203,13 @@ sapply(langs, function(lang) {
     theme(
         plot.title = element_text(family = txt['font.title', lang], size = 22, margin=margin(b=12), face = &quot;bold&quot;)
     )
-
-  gg_animate(p, output, interval = 0.65, ani.width = 700, ani.height = 620)
+  if(lang == &quot;JA&quot;) {
+    p &lt;- p + theme(plot.caption=element_text(family =  txt['font.title', lang]))
+  }
+  gg_animate(p, output, interval = 0.65, ani.width = 700, ani.height = 640)
 })</code></pre>
 <pre><code>## 
-##  FR</code></pre>
+##  JA</code></pre>
 <pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
 <pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
 <pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
@@ -218,63 +223,12 @@ sapply(langs, function(lang) {
 ##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
 ##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
 ##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
-##     Rplot39.png 'migrants_deathAtSea_FR.gif'
-## Output at: migrants_deathAtSea_FR.gif</code></pre>
-<pre><code>## 
-##  DE</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Executing: 
-## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
-##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
-##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
-##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
-##     Rplot19.png Rplot20.png Rplot21.png Rplot22.png Rplot23.png
-##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
-##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
-##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
-##     Rplot39.png 'migrants_deathAtSea_DE.gif'
-## Output at: migrants_deathAtSea_DE.gif</code></pre>
-<pre><code>## 
-##  IT</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Executing: 
-## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
-##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
-##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
-##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
-##     Rplot19.png Rplot20.png Rplot21.png Rplot22.png Rplot23.png
-##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
-##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
-##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
-##     Rplot39.png 'migrants_deathAtSea_IT.gif'
-## Output at: migrants_deathAtSea_IT.gif</code></pre>
-<pre><code>## 
-##  PT</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Executing: 
-## 'convert' -loop 0 -delay 65 Rplot1.png Rplot2.png Rplot3.png
-##     Rplot4.png Rplot5.png Rplot6.png Rplot7.png Rplot8.png
-##     Rplot9.png Rplot10.png Rplot11.png Rplot12.png Rplot13.png
-##     Rplot14.png Rplot15.png Rplot16.png Rplot17.png Rplot18.png
-##     Rplot19.png Rplot20.png Rplot21.png Rplot22.png Rplot23.png
-##     Rplot24.png Rplot25.png Rplot26.png Rplot27.png Rplot28.png
-##     Rplot29.png Rplot30.png Rplot31.png Rplot32.png Rplot33.png
-##     Rplot34.png Rplot35.png Rplot36.png Rplot37.png Rplot38.png
-##     Rplot39.png 'migrants_deathAtSea_PT.gif'
-## Output at: migrants_deathAtSea_PT.gif</code></pre>
-<pre><code>##        FR         DE         IT         PT        
-## plots  List,39    List,39    List,39    List,39   
-## frames Numeric,39 Numeric,39 Numeric,39 Numeric,39
-## saved  TRUE       TRUE       TRUE       TRUE</code></pre>
+##     Rplot39.png 'migrants_deathAtSea_JA.gif'
+## Output at: migrants_deathAtSea_JA.gif</code></pre>
+<pre><code>##        JA        
+## plots  List,39   
+## frames Numeric,39
+## saved  TRUE</code></pre>
 <pre class="r"><code># p &lt;- wm + geom_point(
 #   data = dd, aes(x = lon, y = lat, size = dead_and_missing, frame = startWDate, cumulative = T), 
 #   color = &quot;#ab3d3f&quot;, alpha = 0.7

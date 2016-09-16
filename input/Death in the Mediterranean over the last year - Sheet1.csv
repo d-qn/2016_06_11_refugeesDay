@@ -1,8 +1,8 @@
 code,EN,FR,DE,IT,PT,RU,ES,JA,ZH
-main.title,Fortress Europe,L'Europe forteresse,Festung Europa,Fortezza Europa,A Fortaleza Europa,,,,
-main.title2,Migrants who have drowned over the last year,Migrants qui se sont noyés durant l'année écoulée,"Migranten, die im letzten Jahr ertrunken sind",Migranti morti annegati nel corso dell'ultimo anno,Imigrantes afogados no último ano,,,,
-dm,dead or missing,mort ou disparu,tot oder vermisst,morti o scomparsi,mortos ou desaparecidos,,,,
-footer,source: The Migrants' Files | swissinfo.ch,source: The Migrants' Files | swissinfo.ch,Quellen: The Migrants' Files | swissinfo.ch,Fonte: The Migrants' Files | swissinfo.ch,fonte: The Migrants' Files | swissinfo.ch,,,,
+main.title,Fortress Europe,L'Europe forteresse,Festung Europa,Fortezza Europa,A Fortaleza Europa,,"Europa, la fortaleza",ヨーロッパへの険しい道,
+main.title2,Migrants who have drowned over the last year,Migrants qui se sont noyés durant l'année écoulée,"Migranten, die im letzten Jahr ertrunken sind",Migranti morti annegati nel corso dell'ultimo anno,Imigrantes afogados no último ano,,Inmigrantes ahogados en el último año,過去２年間に遭難した難民の数,
+dm,dead or missing,morts ou disparus,tot oder vermisst,morti o scomparsi,mortos ou desaparecidos,,Muertos o desaparecidos,死亡・行方不明者,
+footer,source: The Migrants' Files | swissinfo.ch,source: The Migrants' Files | swissinfo.ch,Quellen: The Migrants' Files | swissinfo.ch,Fonte: The Migrants' Files | swissinfo.ch,fonte: The Migrants' Files | swissinfo.ch,,Fuente: The Migrants'Files / swissinfo.ch,出典: The Migrants' Files | swissinfo.ch,
 font.title,Open Sans Condensed,Open Sans Condensed,Open Sans Condensed,Open Sans Condensed,Open Sans Condensed,Open Sans Condensed,Open Sans Condensed,Osaka,PingFang TC
 txt.title,OpenSans-CondensedLight,OpenSans-CondensedLight,OpenSans-CondensedLight,OpenSans-CondensedLight,OpenSans-CondensedLight,OpenSans-CondensedLight,OpenSans-CondensedLight,Osaka,PingFang TC
-txt.number,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Osaka,PingFang TC
+txt.number,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans,Open Sans
